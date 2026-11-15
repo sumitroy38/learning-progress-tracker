@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "start": "node src/server.js",
-  "dev": "nodemon src/server.js",
-  "test": "jest"
-},
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -15,6 +15,7 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "connect-pg-simple": "^10.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csrf-csrf": "^4.1.0",
     "dotenv": "^18.0.10",
