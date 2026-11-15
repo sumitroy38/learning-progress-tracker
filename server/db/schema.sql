@@ -1,5 +1,8 @@
 /* Development reset: removes old tables so this file can be run again.
    Warning: this deletes all data in these tables. */
+
+DROP TABLE IF EXISTS "session";
+
 DROP TABLE IF EXISTS assignments;
 DROP TABLE IF EXISTS learners;
 DROP TABLE IF EXISTS activities;
@@ -44,3 +47,12 @@ CREATE TABLE assignments (
     CHECK (status IN ('Not Started', 'In Progress', 'Completed')),
   UNIQUE (learner_id, activity_id)
 );
+
+/* Login sessions, used by connect-pg-simple */
+CREATE TABLE "session" (
+  "sid" VARCHAR NOT NULL PRIMARY KEY,
+  "sess" JSON NOT NULL,
+  "expire" TIMESTAMP(6) NOT NULL
+);
+CREATE INDEX "IDX_session_expire" ON "session" ("expire");
+
