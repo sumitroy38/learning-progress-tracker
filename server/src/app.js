@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const pool = require('./db');
+const authRoutes = require('./routes/auth');
 
 if (!process.env.SESSION_SECRET) {
   throw new Error('SESSION_SECRET is missing in .env');
@@ -33,5 +34,7 @@ app.use(
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+app.use('/api/v1/auth', authRoutes);
 
 module.exports = app;
