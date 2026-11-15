@@ -8,6 +8,7 @@ const { doubleCsrfProtection, invalidCsrfTokenError } = require('./csrf');
 const { requireAuth, requireRole, firstLoginGate } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const activityRoutes = require('./routes/activities');
+const learnerRoutes = require('./routes/learners');
 
 if (!process.env.SESSION_SECRET) {
   throw new Error('SESSION_SECRET is missing in .env');
@@ -51,6 +52,7 @@ app.get('/api/v1/health', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 
 app.use('/api/v1/activities', requireAuth, requireRole('Coordinator'), activityRoutes);
+app.use('/api/v1/learners', requireAuth, requireRole('Coordinator'), learnerRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'Not found.' });
