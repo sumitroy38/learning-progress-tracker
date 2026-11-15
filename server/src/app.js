@@ -5,8 +5,9 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const pool = require('./db');
 const { doubleCsrfProtection, invalidCsrfTokenError } = require('./csrf');
-const { firstLoginGate } = require('./middleware/auth');
+const { requireAuth, requireRole, firstLoginGate } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
+const activityRoutes = require('./routes/activities');
 
 if (!process.env.SESSION_SECRET) {
   throw new Error('SESSION_SECRET is missing in .env');
@@ -48,6 +49,8 @@ app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 app.use('/api/v1/auth', authRoutes);
+
+app.use('/api/v1/activities', requireAuth, requireRole('Coordinator'), activityRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'Not found.' });
