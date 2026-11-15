@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const pool = require('../db');
-const { parseId, generateTempPassword } = require('../utils');
+const { parseId, generateTempPassword, ASSIGNMENT_SELECT, toAssignment } = require('../utils');
 
 const router = express.Router();
 
@@ -123,6 +123,27 @@ router.post('/:id/reset-password', async (req, res, next) => {
         expiresAt: updated.rows[0].temp_password_expires_at,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// View one learner's assignments with activity details
+router.get('/:id/assignments', async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (id === null) return res.status(404).json({ message: 'Learner not found.' });
+
+    const learner = await pool.query('SELECT id FROM learners WHERE id = $1', [id]);
+    if (learner.rows.length === 0) {
+      return res.status(404).json({ message: 'Learner not found.' });
+    }
+
+    const { rows } = await pool.query(
+      `${ASSIGNMENT_SELECT} WHERE asg.learner_id = $1 ORDER BY asg.id`,
+      [id]
+    );
+    res.json(rows.map(toAssignment));
   } catch (err) {
     next(err);
   }

@@ -10,6 +10,9 @@ const authRoutes = require('./routes/auth');
 const activityRoutes = require('./routes/activities');
 const learnerRoutes = require('./routes/learners');
 
+const assignmentRoutes = require('./routes/assignments');
+const summaryRoutes = require('./routes/summary');
+
 if (!process.env.SESSION_SECRET) {
   throw new Error('SESSION_SECRET is missing in .env');
 }
@@ -54,6 +57,9 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/activities', requireAuth, requireRole('Coordinator'), activityRoutes);
 app.use('/api/v1/learners', requireAuth, requireRole('Coordinator'), learnerRoutes);
 
+app.use('/api/v1/assignments', requireAuth, assignmentRoutes);
+app.use('/api/v1/cohort-summary', requireAuth, requireRole('Coordinator'), summaryRoutes);
+
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'Not found.' });
 });
@@ -69,4 +75,4 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong.' });
 });
 
-module.exports = app;
+module.exports = app; 
