@@ -10,7 +10,7 @@ const router = express.Router();
 const limiter = (message) =>
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 10,
+    limit: Number(process.env.LOGIN_RATE_LIMIT) || 10,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     message: { message },

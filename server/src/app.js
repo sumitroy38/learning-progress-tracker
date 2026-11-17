@@ -26,7 +26,12 @@ app.use(cookieParser());
 
 app.use(
   session({
-    store: new pgSession({ pool, tableName: 'session' }),
+        store: new pgSession({
+      pool,
+      tableName: 'session',
+      // The cleanup timer is switched off while testing
+      pruneSessionInterval: process.env.NODE_ENV === 'test' ? false : 60,
+    }),
     name: 'lpt.sid',
     secret: process.env.SESSION_SECRET,
     resave: false,
