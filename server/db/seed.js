@@ -1,14 +1,18 @@
-require('dotenv').config();
+// Adds fictional demo data: 3 candidates and 4 activities. No real people, no real data.
+//
+//   npm run db:seed
+//
+// Each candidate gets a random temporary password, printed once in this terminal and never saved
+// anywhere in readable form. The passwords stop working after 24 hours. After that, the coordinator
+// can use "Reset password" in the app to make a new one.
+//
+// This script does not create a coordinator. Use: npm run coordinator:create
+require('dotenv').config({ quiet: true });
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-
-// Random one time password, shown only in this terminal, never saved in code
-const randomPassword = () => crypto.randomBytes(9).toString('base64url');
-
-const COORDINATOR_EMAIL = process.env.COORDINATOR_EMAIL || 'coordinator@example.com';
 
 const candidates = [
   { name: 'Asha Verma', email: 'asha.verma@example.com', cohort: 'Cohort A' },
@@ -23,39 +27,45 @@ const activities = [
   ['Git and GitHub', 'Tools', 3],
 ];
 
-async function addAccount(client, email, role) {
-  const password = randomPassword();
-  const hash = await bcrypt.hash(password, 12);
-  const { rows } = await client.query(
-    `INSERT INTO accounts (email, password_hash, role, must_change_password, temp_password_expires_at)
-     VALUES ($1, $2, $3, TRUE, NOW() + INTERVAL '24 hours') RETURNING id`,
-    [email.toLowerCase(), hash, role]
-  );
-  return { id: rows[0].id, password };
-}
+const randomPassword = () => crypto.randomBytes(9).toString('base64url');
 
 async function main() {
-  const client = await pool.connect();
+  if (!process.env.DATABASE_URL) {
+    console.error('DATABASE_URL is missing. Copy server/.env.example to server/.env and fill it in.');
+    process.exitCode = 1;
+    return;
+  }
+
+  let client;
   try {
-    const existing = await client.query('SELECT COUNT(*)::int AS n FROM accounts');
-    if (existing.rows[0].n > 0) {
-      console.log('Accounts already exist. Re-run schema.sql first to start fresh.');
+    client = await pool.connect();
+    const existing = await client.query(
+      `SELECT (SELECT COUNT(*) FROM learners)::int AS learners,
+              (SELECT COUNT(*) FROM activities)::int AS activities`
+    );
+    if (existing.rows[0].learners > 0 || existing.rows[0].activities > 0) {
+      console.log('Demo data is already there, so nothing was added.');
+      console.log('To start fresh, run: npm run db:init (this deletes everything), then seed again.');
       return;
     }
 
+    // Everything is saved together, or nothing is saved
     await client.query('BEGIN');
     const credentials = [];
 
-    const coord = await addAccount(client, COORDINATOR_EMAIL, 'Coordinator');
-    credentials.push({ role: 'Coordinator', email: COORDINATOR_EMAIL, password: coord.password });
-
-    for (const c of candidates) {
-      const acc = await addAccount(client, c.email, 'Candidate');
+    for (const candidate of candidates) {
+      const password = randomPassword();
+      const hash = await bcrypt.hash(password, 12);
+      const account = await client.query(
+        `INSERT INTO accounts (email, password_hash, role, must_change_password, temp_password_expires_at)
+         VALUES ($1, $2, 'Candidate', TRUE, NOW() + INTERVAL '24 hours') RETURNING id`,
+        [candidate.email, hash]
+      );
       await client.query(
         'INSERT INTO learners (display_name, cohort, account_id) VALUES ($1, $2, $3)',
-        [c.name, c.cohort, acc.id]
+        [candidate.name, candidate.cohort, account.rows[0].id]
       );
-      credentials.push({ role: 'Candidate', email: c.email, password: acc.password });
+      credentials.push({ username: candidate.email, temporaryPassword: password });
     }
 
     for (const [title, topic, hours] of activities) {
@@ -66,17 +76,19 @@ async function main() {
     }
 
     await client.query('COMMIT');
-    console.log('\nSeed complete. Save these now, they are shown only once:\n');
+    console.log('\nDemo data added: 3 candidates and 4 activities.');
+    console.log('Temporary passwords are shown only now. They expire in 24 hours:\n');
     console.table(credentials);
-    console.log('Temporary passwords expire in 24 hours.');
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Seed failed:', err.message);
+    if (client) await client.query('ROLLBACK').catch(() => {});
+    if (err.code === '42P01') console.error('The tables do not exist yet. Run: npm run db:init');
+    else console.error('Seeding failed:', err.message);
     process.exitCode = 1;
   } finally {
-    client.release();
+    if (client) client.release();
     await pool.end();
   }
 }
 
-main();
+// Exit on purpose: a failed database login can otherwise leave the program hanging
+main().finally(() => process.exit());

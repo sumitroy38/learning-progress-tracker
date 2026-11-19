@@ -1,16 +1,23 @@
-# React + Vite
+# Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The web screens for the Learning Progress Tracker. Built with React and Vite.
 
-Currently, two official plugins are available:
+Vite is the tool that runs the app while you work and builds it for release.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run it
 
-## React Compiler
+The API must already be running on port 4000. See the main README for the full setup.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+npm install
+npm run dev
+```
 
-## Expanding the Oxlint configuration
+Then open http://localhost:5173/
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+While you work, Vite passes every call that starts with /api on to the API at port 4000. Because the browser sees only one address, the login cookies just work and no extra cross site settings are needed.
+
+## Other commands
+
+* `npm run lint` checks the code for common mistakes
+* `npm run build` makes the release files in the dist folder

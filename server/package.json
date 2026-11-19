@@ -4,10 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest --runInBand"
-  },
+  "start": "node src/server.js",
+  "dev": "nodemon src/server.js",
+  "test": "jest --runInBand",
+  "secret": "node db/secret.js",
+  "db:init": "node db/init.js",
+  "db:init:test": "node db/init.js test",
+  "db:seed": "node db/seed.js",
+  "coordinator:create": "node db/create-coordinator.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
