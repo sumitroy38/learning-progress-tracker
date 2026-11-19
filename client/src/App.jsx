@@ -1,122 +1,105 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react'
+import { api, setSessionEndedHandler } from './api'
+import Shell from './components/Shell'
+import { ErrorState, Spinner } from './components/ui'
+import CandidateHome from './pages/CandidateHome'
+import ChangePasswordPage from './pages/ChangePasswordPage'
+import CoordinatorDashboard from './pages/CoordinatorDashboard'
+import LoginPage from './pages/LoginPage'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [session, setSession] = useState(null) // { role, mustChangePassword } while signed in
+  const [phase, setPhase] = useState('checking') // "checking", "ready" or "offline"
+  const [notice, setNotice] = useState('')
+  const [attempt, setAttempt] = useState(0) // goes up each time the person presses "Try again"
+
+  useEffect(() => {
+    // If any later request says "please sign in" (expired session), go back to the sign in page
+    setSessionEndedHandler(() => {
+      setSession(null)
+      setNotice('Your session has ended. Please sign in again.')
+    })
+  }, [])
+
+  // On page load (and refresh) ask the server who is signed in. The browser keeps only a cookie.
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get('/auth/me', { redirectOnUnauthorized: false })
+      .then((me) => {
+        if (cancelled) return
+        setSession(me)
+        setPhase('ready')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err.status === 401) {
+          setSession(null)
+          setPhase('ready')
+        } else {
+          setPhase('offline')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [attempt])
+
+  async function handleLogout() {
+    try {
+      await api.post('/auth/logout', {}, { redirectOnUnauthorized: false })
+    } catch {
+      // The session may already be gone. Either way we show the sign in page.
+    }
+    setSession(null)
+    setNotice('You have been signed out.')
+  }
+
+  if (phase === 'checking') {
+    return (
+      <Shell>
+        <Spinner label="Starting" />
+      </Shell>
+    )
+  }
+
+  if (phase === 'offline') {
+    return (
+      <Shell>
+        <ErrorState
+          message="Cannot reach the server. Make sure the API is running, then try again."
+          onRetry={() => {
+            setPhase('checking')
+            setAttempt((count) => count + 1)
+          }}
+        />
+      </Shell>
+    )
+  }
+
+  if (!session) {
+    return (
+      <LoginPage
+        notice={notice}
+        onSignedIn={(next) => {
+          setNotice('')
+          setSession(next)
+        }}
+      />
+    )
+  }
+
+  if (session.mustChangePassword) {
+    return (
+      <Shell role={session.role} onLogout={handleLogout}>
+        <ChangePasswordPage onChanged={() => setSession({ ...session, mustChangePassword: false })} />
+      </Shell>
+    )
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <Shell role={session.role} onLogout={handleLogout}>
+      {session.role === 'Coordinator' ? <CoordinatorDashboard /> : <CandidateHome />}
+    </Shell>
   )
 }
-
-export default App
