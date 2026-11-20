@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
@@ -20,7 +21,28 @@ if (!process.env.SESSION_SECRET) {
 
 const app = express();
 
-app.use(helmet());
+// Hosting platforms put an HTTPS proxy in front of the app. Trusting one proxy lets secure
+// cookies and the login rate limit see the real visitor.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        // On http://localhost this rule would make the browser try https and break the page.
+        // It stays on in production, where the site is served over HTTPS.
+        'upgrade-insecure-requests': process.env.NODE_ENV === 'production' ? [] : null,
+      },
+    },
+  })
+);
+
+// In production the API also serves the built screens: one address, one HTTPS site.
+if (process.env.SERVE_CLIENT === 'true') {
+  app.use(express.static(path.join(__dirname, '../../client/dist')));
+}
 app.use(express.json());
 app.use(cookieParser());
 
