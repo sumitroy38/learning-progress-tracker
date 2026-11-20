@@ -24,7 +24,9 @@ const app = express();
 // Hosting platforms put an HTTPS proxy in front of the app. Trusting one proxy lets secure
 // cookies and the login rate limit see the real visitor.
 if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
+    // How many proxies sit in front of the app. Render does not document this number, so it
+  // can be changed with the TRUST_PROXY_HOPS setting without editing the code.
+  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS) || 1);
 }
 
 app.use(
@@ -80,6 +82,20 @@ app.use('/api/v1', firstLoginGate);
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+// TEMPORARY: shows what the server sees about the visitor's connection. Remove after testing.
+if (process.env.DEBUG_PROXY === 'true') {
+  app.get('/api/v1/debug/ip', (req, res) => {
+    res.json({
+      ip: req.ip,
+      trustProxy: app.get('trust proxy'),
+      forwardedFor: req.headers['x-forwarded-for'] || null,
+      socketAddress: req.socket.remoteAddress,
+      forwardedProto: req.headers['x-forwarded-proto'] || null,
+    });
+  });
+}
+
 app.use('/api/v1/auth', authRoutes);
 
 app.use('/api/v1/activities', requireAuth, requireRole('Coordinator'), activityRoutes);
